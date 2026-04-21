@@ -67,10 +67,16 @@ public class Servidor {
                 // Escuchar mensajes del cliente
                 String mensaje;
 while ((mensaje = entrada.readLine()) != null) {
-    if (mensaje.equals("/exit")) break; 
-    broadcast(nombre + ": " + mensaje);
-}
+    if (mensaje.equals("/exit")) break;
 
+    // Si es un archivo, inyectar el nombre del remitente
+    if (mensaje.startsWith("/archivo:")) {
+        String[] partes = mensaje.split(":", 3);
+        broadcast("/archivo:" + nombre + ":" + partes[1] + ":" + partes[2]);
+    } else {
+        broadcast(nombre + ": " + mensaje);
+    }
+}
             } catch (IOException e) {
                 System.out.println("Cliente desconectado: " + nombre);
             } finally {

@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import java.nio.file.*;
+import java.util.Base64;
 
 public class Cliente {
 
@@ -23,16 +25,36 @@ public class Cliente {
         salida.println(nombre); // Enviarlo al servidor
 
         // Hilo para recibir mensajes del servidor (escucha en segundo plano)
-        Thread receptor = new Thread(() -> {
+Thread receptor = new Thread(() -> {
+try {
+    String mensajeRecibido;
+    while ((mensajeRecibido = entrada.readLine()) != null) {
+        if (mensajeRecibido.startsWith("/archivo:")) {
             try {
-                String mensajeRecibido;
-                while ((mensajeRecibido = entrada.readLine()) != null) {
-                    System.out.println(mensajeRecibido);
-                }
-            } catch (IOException e) {
-                System.out.println("Desconectado del servidor.");
+                String[] partes = mensajeRecibido.split(":", 4);
+                if (partes.length < 4) continue; // Evitar errores si el mensaje está mal formado
+
+                String remitente = partes[1];
+                String nombreArchivo = partes[2];
+                byte[] bytes = Base64.getDecoder().decode(partes[3]);
+
+                File carpeta = new File("recibidos");
+                if (!carpeta.exists()) carpeta.mkdirs();
+                
+                Files.write(Paths.get("recibidos/" + nombreArchivo), bytes);
+                System.out.println("\n>>> " + remitente + " envió un archivo: " + nombreArchivo);
+            } catch (Exception e) {
+                System.out.println("Error al procesar archivo entrante.");
             }
-        });
+        } else {
+            System.out.println("\n" + mensajeRecibido);
+        }
+        System.out.print("> "); // Para mantener el prompt visible
+    }
+} catch (IOException e) {
+    System.out.println("Desconectado del servidor.");
+}
+});
         receptor.setDaemon(true);
         receptor.start();
 
@@ -43,7 +65,29 @@ while (scanner.hasNextLine()) {
 
     // Ignorar líneas vacías
     if (msg.isEmpty()) continue;
+if (msg.startsWith("/enviar ")) {
+    String ruta = msg.substring(8).trim();
+    File archivo = new File(ruta);
 
+    if (!archivo.exists()) {
+        System.out.println("Archivo no encontrado: " + ruta);
+        continue;
+    }
+
+    // Límite de 10MB para no saturar el chat
+    if (archivo.length() > 10 * 1024 * 1024) {
+        System.out.println("Archivo demasiado grande (máx 10MB).");
+        continue;
+    }
+
+    byte[] bytes = Files.readAllBytes(archivo.toPath());
+    String base64 = Base64.getEncoder().encodeToString(bytes);
+
+    // formato: /archivo:nombre_archivo:base64
+    salida.println("/archivo:" + archivo.getName() + ":" + base64);
+    System.out.println("Archivo enviado: " + archivo.getName());
+    continue;
+}
     // Sistema de comandos — todos empiezan con /
     if (msg.startsWith("/")) {
         switch (msg.toLowerCase()) {
@@ -62,6 +106,7 @@ while (scanner.hasNextLine()) {
             case "/ayuda":
                 System.out.println("Comandos disponibles:");
                 System.out.println("  /exit   → salir del chat");
+                        System.out.println("  /enviar <ruta>   → enviar un archivo");
                 System.out.println("  /ayuda  → mostrar esta ayuda");
                 break;
 
