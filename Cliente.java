@@ -8,7 +8,7 @@ import java.util.Scanner;
 public class Cliente {
 
     public static void main(String[] args) throws IOException {
-        String host = "172.25.3.37";
+        String host = "172.25.32.81";
         int puerto = 5000;
 
         Socket socket = new Socket(host, puerto);
